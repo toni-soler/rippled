@@ -51,7 +51,13 @@ shouldCloseLedger(
         return true;
     }
 
-    if ((proposersClosed + proposersValidated) > (prevProposers / 2))
+    // IDAX patch: with the idle interval override, validations of the
+    // previous ledger (always present on a healthy network) do not count as
+    // peers having closed this one; only their proposals do.
+    std::size_t const othersClosed = (idleIntervalOverride().count() != 0)
+        ? proposersClosed
+        : proposersClosed + proposersValidated;
+    if (othersClosed > (prevProposers / 2))
     {
         // If more than half of the network has closed, we close
         JLOG(j.trace()) << "Others have closed";

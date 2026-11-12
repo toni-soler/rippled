@@ -4,11 +4,48 @@
 
 #include <chrono>
 #include <cstddef>
+#include <cstdio>
+#include <cstdlib>
 #include <map>
 #include <optional>
 #include <utility>
 
 namespace xrpl {
+
+/**
+ * IDAX private-network patch: effective idle interval.
+ *
+ * Upstream closes an empty ledger about one second after it opens, because
+ * shouldCloseLedger counts validations of the previous ledger as "others have
+ * closed"; ledgerIdleInterval is never reached. An idle network therefore
+ * writes a new ledger every 3-4 seconds.
+ *
+ * When the environment variable XRPLD_IDLE_INTERVAL_SECONDS is set (15..300),
+ * an open ledger without transactions closes only after that many seconds,
+ * and every "is this node current" age check is widened by the same amount.
+ * A ledger with transactions closes exactly as upstream. Unset or 0: this
+ * binary behaves as upstream. Every validator of a network must use the same
+ * value. Any other value stops the process at start.
+ */
+inline std::chrono::seconds
+idleIntervalOverride()
+{
+    static std::chrono::seconds const value = [] {
+        char const* const text = std::getenv("XRPLD_IDLE_INTERVAL_SECONDS");
+        if (text == nullptr || *text == '\0')
+            return std::chrono::seconds{0};
+        char* end = nullptr;
+        long const seconds = std::strtol(text, &end, 10);
+        if (*end != '\0' || (seconds != 0 && (seconds < 15 || seconds > 300)))
+        {
+            std::fprintf(
+                stderr, "XRPLD_IDLE_INTERVAL_SECONDS must be 0 or between 15 and 300; got '%s'\n", text);
+            std::abort();
+        }
+        return std::chrono::seconds{seconds};
+    }();
+    return value;
+}
 
 /**
  * Consensus algorithm parameters
@@ -71,7 +108,9 @@ struct ConsensusParms
     /**
      * The duration a ledger may remain idle before closing
      */
-    std::chrono::milliseconds const ledgerIdleInterval = std::chrono::seconds{15};
+    std::chrono::milliseconds const ledgerIdleInterval = (idleIntervalOverride().count() != 0)
+        ? std::chrono::milliseconds{idleIntervalOverride()}
+        : std::chrono::milliseconds{std::chrono::seconds{15}};
 
     /**
      * The number of seconds we wait minimum to ensure participation

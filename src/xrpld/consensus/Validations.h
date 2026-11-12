@@ -1,5 +1,6 @@
 #pragma once
 
+#include <xrpld/consensus/ConsensusParms.h>
 #include <xrpld/consensus/LedgerTrie.h>
 
 #include <xrpl/basics/Log.h>
@@ -44,7 +45,7 @@ struct ValidationParms
      * This is a safety to protect against very old validations and the time
      * it takes to adjust the close time accuracy window.
      */
-    std::chrono::seconds validationCurrentWall = std::chrono::minutes{5};
+    std::chrono::seconds validationCurrentWall = std::chrono::minutes{5} + idleIntervalOverride();
 
     /**
      * Duration a validation remains current after first observed.
@@ -53,7 +54,7 @@ struct ValidationParms
      * first saw it. This provides faster recovery in very rare cases where the
      * number of validations produced by the network is lower than normal
      */
-    std::chrono::seconds validationCurrentLocal = std::chrono::minutes{3};
+    std::chrono::seconds validationCurrentLocal = std::chrono::minutes{3} + idleIntervalOverride();
 
     /**
      * Duration pre-close in which validations are acceptable.
@@ -61,7 +62,7 @@ struct ValidationParms
      * The number of seconds before a close time that we consider a validation
      * acceptable. This protects against extreme clock errors
      */
-    std::chrono::seconds validationCurrentEarly = std::chrono::minutes{3};
+    std::chrono::seconds validationCurrentEarly = std::chrono::minutes{3} + idleIntervalOverride();
 
     /**
      * Duration a set of validations for a given ledger hash remain valid

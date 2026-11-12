@@ -652,7 +652,10 @@ Consensus<Adaptor>::startRound(
     if (firstRound_)
     {
         // take our initial view of closeTime_ from the seed ledger
-        prevRoundTime_ = adaptor_.parms().ledgerIdleInterval;
+        // IDAX patch: keep the upstream 15 s seed when the idle interval is
+        // overridden; this value paces the first round, it is not an idle wait.
+        prevRoundTime_ = std::min<std::chrono::milliseconds>(
+            adaptor_.parms().ledgerIdleInterval, std::chrono::seconds{15});
         prevCloseTime_ = prevLedger.closeTime();
         firstRound_ = false;
     }

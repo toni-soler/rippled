@@ -12,6 +12,7 @@
 #include <xrpld/app/misc/Transaction.h>
 #include <xrpld/app/misc/TxQ.h>
 #include <xrpld/app/misc/ValidatorList.h>
+#include <xrpld/consensus/ConsensusParms.h>
 #include <xrpld/core/Config.h>
 #include <xrpld/core/TimeKeeper.h>
 #include <xrpld/overlay/Overlay.h>
@@ -189,6 +190,9 @@ LedgerMaster::getPublishedLedgerAge()
 
     std::chrono::seconds ret = app_.getTimeKeeper().closeTime().time_since_epoch();
     ret -= pubClose;
+    // IDAX patch: an idle ledger may legitimately be this old; see
+    // idleIntervalOverride(). Age is reported beyond that allowance.
+    ret -= idleIntervalOverride();
     ret = (ret > 0s) ? ret : 0s;
     static std::chrono::seconds kLastRet = -1s;
 
@@ -214,6 +218,8 @@ LedgerMaster::getValidatedLedgerAge()
 
     std::chrono::seconds ret = app_.getTimeKeeper().closeTime().time_since_epoch();
     ret -= valClose;
+    // IDAX patch: see getPublishedLedgerAge().
+    ret -= idleIntervalOverride();
     ret = (ret > 0s) ? ret : 0s;
     static std::chrono::seconds kLastRet = -1s;
 
